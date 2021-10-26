@@ -108,6 +108,12 @@ class ShareMenu: RCTEventEmitter {
         }
     }
     
+    func getDocumentsDirectory() -> URL {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        let documentsDirectory = paths[0]
+        return documentsDirectory
+    }
+    
     func saveFileMetadata(url: URL) {
         guard let bundleId = Bundle.main.bundleIdentifier else { return }
         guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
@@ -115,11 +121,11 @@ class ShareMenu: RCTEventEmitter {
             return
         }
         
-//        guard let groupFileManagerContainer = FileManager.default
-//                .containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)")
-//        else {
-//          return
-//        }
+        guard let groupFileManagerContainer = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)")
+        else {
+          return
+        }
         
         do {
             let mimeType = url.extractMimeType()
@@ -137,6 +143,18 @@ class ShareMenu: RCTEventEmitter {
                         }
                         else if let nVal = item.numberValue {
                             metadataDict[id.rawValue] = nVal
+                        } else if id == AVMetadataIdentifier("id3/APIC"), let dataval = item.dataValue {
+                            var image: UIImage = UIImage(data: dataval)!
+                            if let data = image.pngData() {
+                                let filename = groupFileManagerContainer
+                                  .appendingPathComponent("temp.png")
+                               
+//                                let filename = getDocumentsDirectory().appendingPathComponent("copy.png")
+                                    try? data.write(to: filename)
+                           
+                                userDefaults.setValue(filename.absoluteURL.absoluteString, forKey: "last_url_share_image");
+                            }
+                          
                         } else {
                             print("tara here could not get", item.identifier)
 
@@ -147,7 +165,6 @@ class ShareMenu: RCTEventEmitter {
               
                 let jsonData = try JSONSerialization.data(withJSONObject: metadataDict, options: .prettyPrinted)
                 let jsonString = String(data: jsonData, encoding: String.Encoding.utf8)
-                print(jsonString)
                 userDefaults.setValue(jsonString, forKey: "last_url_share_metadata");
                 userDefaults.synchronize();
             }
