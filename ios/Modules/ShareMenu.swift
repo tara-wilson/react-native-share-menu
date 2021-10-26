@@ -148,8 +148,6 @@ class ShareMenu: RCTEventEmitter {
                             if let data = image.pngData() {
                                 let filename = groupFileManagerContainer
                                   .appendingPathComponent("temp.png")
-                               
-//                                let filename = getDocumentsDirectory().appendingPathComponent("copy.png")
                                     try? data.write(to: filename)
                            
                                 userDefaults.setValue(filename.absoluteURL.absoluteString, forKey: "last_url_share_image");
