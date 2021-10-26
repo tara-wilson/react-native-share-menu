@@ -1,3 +1,8 @@
+import AVFoundation
+//import AVFAudio
+//import SoundAnalysis
+//import CoreML
+
 @objc(ShareMenu)
 class ShareMenu: RCTEventEmitter {
 
@@ -82,12 +87,17 @@ class ShareMenu: RCTEventEmitter {
             _targetUrlScheme = expectedUrlScheme
         }
 
-        guard let scheme = url.scheme, scheme == targetUrlScheme else { return }
+        guard let scheme = url.scheme else { return }
         guard let bundleId = Bundle.main.bundleIdentifier else { return }
         guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
             print("Error: \(NO_APP_GROUP_ERROR)")
             return
         }
+        
+        if (scheme == "file") {
+            saveFileMetadata(url: url)
+        }
+
 
         let extraData = userDefaults.object(forKey: USER_DEFAULTS_EXTRA_DATA_KEY) as? [String:Any]
 
@@ -96,6 +106,130 @@ class ShareMenu: RCTEventEmitter {
             dispatchEvent(with: data, and: extraData)
             userDefaults.removeObject(forKey: USER_DEFAULTS_KEY)
         }
+    }
+    
+    func saveFileMetadata(url: URL) {
+        guard let bundleId = Bundle.main.bundleIdentifier else { return }
+        guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
+            print("Error: \(NO_APP_GROUP_ERROR)")
+            return
+        }
+        
+//        guard let groupFileManagerContainer = FileManager.default
+//                .containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)")
+//        else {
+//          return
+//        }
+        
+        do {
+            let mimeType = url.extractMimeType()
+            if (mimeType.contains("audio")) {
+                let asset = AVAsset.init(url: url)
+                let duration = asset.duration.seconds
+                userDefaults.setValue(duration, forKey: "last_url_share_duration");
+                
+                let metadata = asset.metadata
+                var metadataDict: [String: Any] = [:]
+                metadata.forEach({ item in
+                    if let id = item.identifier {
+                        if let strVal = item.stringValue {
+                            metadataDict[id.rawValue] = strVal
+                        }
+                        else if let nVal = item.numberValue {
+                            metadataDict[id.rawValue] = nVal
+                        } else {
+                            print("tara here could not get", item.identifier)
+
+                        }
+                    }
+                })
+             
+              
+                let jsonData = try JSONSerialization.data(withJSONObject: metadataDict, options: .prettyPrinted)
+                let jsonString = String(data: jsonData, encoding: String.Encoding.utf8)
+                print(jsonString)
+                userDefaults.setValue(jsonString, forKey: "last_url_share_metadata");
+                userDefaults.synchronize();
+            }
+        } catch {
+            print(error)
+        }
+       
+
+
+        
+//        if #available(iOS 13.0, *) {
+//
+//
+//            /// An observer that receives results from a classify sound request.
+//            class ResultsObserver: NSObject, SNResultsObserving {
+//                /// Notifies the observer when a request generates a prediction.
+//                func request(_ request: SNRequest, didProduce result: SNResult) {
+//                    // Downcast the result to a classification result.
+//                    guard let result = result as? SNClassificationResult else  { return }
+//
+//                    // Get the prediction with the highest confidence.
+//                    guard let classification = result.classifications.first else { return }
+//
+//                    // Get the starting time.
+//                    let timeInSeconds = result.timeRange.start.seconds
+//
+//                    // Convert the time to a human-readable string.
+//                    let formattedTime = String(format: "%.2f", timeInSeconds)
+//                    print("Analysis result for audio at time: \(formattedTime)")
+//
+//                    // Convert the confidence to a percentage string.
+//                    let percent = classification.confidence * 100.0
+//                    let percentString = String(format: "%.2f%%", percent)
+//
+//                    // Print the classification's name (label) with its confidence.
+//                    print("\(classification.identifier): \(percentString) confidence.\n")
+//                }
+//
+//
+//                /// Notifies the observer when a request generates an error.
+//                func request(_ request: SNRequest, didFailWithError error: Error) {
+//                    print("The the analysis failed: \(error.localizedDescription)")
+//                }
+//
+//                /// Notifies the observer when a request is complete.
+//                func requestDidComplete(_ request: SNRequest) {
+//                    print("The request completed successfully!")
+//                }
+//            }
+//
+//            do {
+//                let audioFileAnalyzer = try SNAudioFileAnalyzer(url: url)
+//                let resultsObserver = ResultsObserver()
+//                let version1 = SNClassifierIdentifier.version1
+//                let request = try SNClassifySoundRequest(mlModel: version1)
+//                try audioFileAnalyzer.add(request, withObserver: resultsObserver)
+//                audioFileAnalyzer.analyze()
+//
+//            } catch {
+//            print(error)
+//            }
+//
+//        } else {
+//            // Fallback on earlier versions
+//        }
+//
+      
+      
+    }
+    
+    func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
+      do {
+        if FileManager.default.fileExists(atPath: destUrl.path) {
+          try FileManager.default.removeItem(at: destUrl)
+        }
+        try FileManager.default.copyItem(at: srcUrl, to: destUrl)
+      } catch (let error) {
+        print("Could not save file from \(srcUrl) to \(destUrl): \(error)")
+        return false
+      }
+      
+      return true
     }
 
     @objc(getSharedText:)
