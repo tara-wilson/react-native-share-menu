@@ -4,9 +4,8 @@ import AVFoundation
 //import CoreML
 
 @objc(ShareMenu)
-class ShareMenu: RCTEventEmitter, FDWaveformViewDelegate {
+class ShareMenu: RCTEventEmitter {
 
-    var waveformView: FDWaveformView = FDWaveformView(frame: CGRect.init(x: 0, y: 0, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height))
     private(set) static var _shared: ShareMenu?
     @objc public static var shared: ShareMenu
     {
@@ -116,8 +115,6 @@ class ShareMenu: RCTEventEmitter, FDWaveformViewDelegate {
     }
     
     func saveFileMetadata(url: URL) {
-        waveformView.delegate = self
-        waveformView.audioURL = url
         guard let bundleId = Bundle.main.bundleIdentifier else { return }
         guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
             print("Error: \(NO_APP_GROUP_ERROR)")
@@ -171,18 +168,6 @@ class ShareMenu: RCTEventEmitter, FDWaveformViewDelegate {
                 
                 userDefaults.synchronize();
              
-//                FDAudioContext.load(fromAudioURL: url) { audioContext in
-//                    DispatchQueue.main.async {
-//
-//
-//                        if audioContext == nil {
-//                            NSLog("FDWaveformView failed to load URL: \(url)")
-//                        }
-//
-//                        print("samples", audioContext?.totalSamples)
-//                    }
-//                }
-                
             
             }
         } catch {
@@ -191,23 +176,7 @@ class ShareMenu: RCTEventEmitter, FDWaveformViewDelegate {
       
     }
     
-    func waveformViewDidLoad(_ waveformView: FDWaveformView) {
-        waveformView.renderWaveform()
-    }
-    
-    func waveformViewDidRender(_ waveformView: FDWaveformView) {
-        guard let bundleId = Bundle.main.bundleIdentifier else { return }
-        guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
-            print("Error: \(NO_APP_GROUP_ERROR)")
-            return
-        }
-        
-        print("got samples", waveformView.finalSamples.count)
-        userDefaults.setValue(waveformView.finalSamples, forKey: "last_url_share_samples");
-        userDefaults.setValue(waveformView.finalSampleMax, forKey: "last_url_share_sample_max");
-        userDefaults.synchronize();
-    }
-    
+
     func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
       do {
         if FileManager.default.fileExists(atPath: destUrl.path) {
