@@ -5,7 +5,7 @@ import UIKit
 import AVFoundation
 
 /// Holds audio information used for building waveforms
-final class FDAudioContext {
+open final class FDAudioContext {
     
     /// The audio asset URL used to load the context
     public let audioURL: URL
@@ -19,7 +19,7 @@ final class FDAudioContext {
     // Loaded assetTrack
     public let assetTrack: AVAssetTrack
     
-    private init(audioURL: URL, totalSamples: Int, asset: AVAsset, assetTrack: AVAssetTrack) {
+    init(audioURL: URL, totalSamples: Int, asset: AVAsset, assetTrack: AVAssetTrack) {
         self.audioURL = audioURL
         self.totalSamples = totalSamples
         self.asset = asset

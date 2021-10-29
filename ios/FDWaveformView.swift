@@ -117,38 +117,38 @@ open class FDWaveformView: UIView {
     //TODO: MAKE PUBLIC
 
     /// The portion of extra pixels to render left and right of the viewable region
-    private var horizontalBleedTarget = 0.5
+    var horizontalBleedTarget = 0.5
 
     /// The required portion of extra pixels to render left and right of the viewable region
     /// If this portion is not available then a re-render will be performed
-    private var horizontalBleedAllowed = 0.1 ... 3.0
+     var horizontalBleedAllowed = 0.1 ... 3.0
 
     /// The number of horizontal pixels to render per visible pixel on the screen (for anti-aliasing)
-    private var horizontalOverdrawTarget = 3.0
+     var horizontalOverdrawTarget = 3.0
 
     /// The required number of horizontal pixels to render per visible pixel on the screen (for anti-aliasing)
     /// If this number is not available then a re-render will be performed
-    private var horizontalOverdrawAllowed = 1.5 ... 5.0
+     var horizontalOverdrawAllowed = 1.5 ... 5.0
 
     /// The number of vertical pixels to render per visible pixel on the screen (for anti-aliasing)
-    private var verticalOverdrawTarget = 2.0
+     var verticalOverdrawTarget = 2.0
 
     /// The required number of vertical pixels to render per visible pixel on the screen (for anti-aliasing)
     /// If this number is not available then a re-render will be performed
-    private var verticalOverdrawAllowed = 1.0 ... 3.0
+     var verticalOverdrawAllowed = 1.0 ... 3.0
 
     /// The "zero" level (in dB)
-    fileprivate let noiseFloor: CGFloat = -50.0
+     let noiseFloor: CGFloat = -50.0
 
 
 
     // Mark - Private vars
 
     /// Whether rendering for the current asset failed
-    private var renderForCurrentAssetFailed = false
+     var renderForCurrentAssetFailed = false
 
     /// Current audio context to be used for rendering
-    private var audioContext: FDAudioContext? {
+     var audioContext: FDAudioContext? {
         didSet {
             waveformImage = nil
             zoomSamples = 0 ..< self.totalSamples
@@ -163,7 +163,7 @@ open class FDWaveformView: UIView {
     }
 
     /// Currently running renderer
-    private var inProgressWaveformRenderOperation: FDWaveformRenderOperation? {
+     var inProgressWaveformRenderOperation: FDWaveformRenderOperation? {
         willSet {
             if newValue !== inProgressWaveformRenderOperation {
                 inProgressWaveformRenderOperation?.cancel()
@@ -172,10 +172,10 @@ open class FDWaveformView: UIView {
     }
 
     /// The render operation used to render the current waveform image
-    private var cachedWaveformRenderOperation: FDWaveformRenderOperation?
+     var cachedWaveformRenderOperation: FDWaveformRenderOperation?
 
     /// Image of waveform
-    private var waveformImage: UIImage? {
+     var waveformImage: UIImage? {
         get { return imageView.image }
         set {
             // This will allow us to apply a tint color to the image
@@ -185,7 +185,7 @@ open class FDWaveformView: UIView {
     }
 
     /// Desired scale of image based on window's screen scale
-    private var desiredImageScale: CGFloat {
+     var desiredImageScale: CGFloat {
         return window?.screen.scale ?? UIScreen.main.scale
     }
 
@@ -201,17 +201,17 @@ open class FDWaveformView: UIView {
     }
 
     /// Represents the status of the waveform renderings
-    fileprivate enum CacheStatus {
+     enum CacheStatus {
         case dirty
         case notDirty(cancelInProgressRenderOperation: Bool)
     }
 
-    fileprivate func decibel(_ amplitude: CGFloat) -> CGFloat {
+     func decibel(_ amplitude: CGFloat) -> CGFloat {
         return 20.0 * log10(abs(amplitude))
     }
 
     /// View for rendered waveform
-    lazy fileprivate var imageView: UIImageView = {
+    lazy  var imageView: UIImageView = {
         let retval = UIImageView(frame: CGRect.zero)
         retval.contentMode = .scaleToFill
         retval.tintColor = self.wavesColor
@@ -219,7 +219,7 @@ open class FDWaveformView: UIView {
     }()
 
     /// View for rendered waveform showing progress
-    lazy fileprivate var highlightedImage: UIImageView = {
+    lazy  var highlightedImage: UIImageView = {
         let retval = UIImageView(frame: CGRect.zero)
         retval.contentMode = .scaleToFill
         retval.tintColor = self.progressColor
@@ -227,7 +227,7 @@ open class FDWaveformView: UIView {
     }()
 
     /// A view which hides part of the highlighted image
-    fileprivate let clipping: UIView = {
+     let clipping: UIView = {
         let retval = UIView(frame: CGRect.zero)
         retval.clipsToBounds = true
         return retval
@@ -242,19 +242,19 @@ open class FDWaveformView: UIView {
     /// Indicates the gesture begun lastly.
     /// This helps to determine which of the continuous interactions should be active, pinching or panning.
     /// pinchRecognizer
-    fileprivate var firstGesture = PressType.none
+     var firstGesture = PressType.none
 
     /// Gesture recognizer
-    fileprivate var pinchRecognizer = UIPinchGestureRecognizer()
+     var pinchRecognizer = UIPinchGestureRecognizer()
 
     /// Gesture recognizer
-    fileprivate var panRecognizer = UIPanGestureRecognizer()
+     var panRecognizer = UIPanGestureRecognizer()
 
     /// Gesture recognizer
-    fileprivate var tapRecognizer = UITapGestureRecognizer()
+     var tapRecognizer = UITapGestureRecognizer()
 
     /// Whether rendering is happening asynchronously
-    fileprivate var renderingInProgress = false
+     var renderingInProgress = false
 
     /// Whether loading is happening asynchronously
     open var loadingInProgress = false
@@ -291,7 +291,7 @@ open class FDWaveformView: UIView {
     }
 
     /// If the cached waveform or in-progress waveform is insufficient for the current frame
-    fileprivate func cacheStatus() -> CacheStatus {
+     func cacheStatus() -> CacheStatus {
         guard !renderForCurrentAssetFailed else { return .notDirty(cancelInProgressRenderOperation: true) }
 
         let isInProgressRenderOperationDirty = isWaveformRenderOperationDirty(inProgressWaveformRenderOperation)
