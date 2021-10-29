@@ -47,6 +47,9 @@ final public class FDWaveformRenderOperation: Operation {
     /// The audio context used to build the waveform
     let audioContext: FDAudioContext
     
+    var finalSamples: [CGFloat] = []
+    var finalSampleMax: CGFloat = 0
+    
     /// Size of waveform image to render
     public let imageSize: CGSize
     
@@ -69,12 +72,12 @@ final public class FDWaveformRenderOperation: Operation {
     // MARK: - Private
     
     ///  Handler called when the rendering has completed. nil UIImage indicates that there was an error during processing.
-    let completionHandler: (UIImage?) -> ()
+    let completionHandler: (UIImage?, [CGFloat], CGFloat) -> ()
     
     /// Final rendered image. Used to hold image for completionHandler.
     var renderedImage: UIImage?
     
-    init(audioContext: FDAudioContext, imageSize: CGSize, sampleRange: CountableRange<Int>? = nil, format: FDWaveformRenderFormat = FDWaveformRenderFormat(), completionHandler: @escaping (_ image: UIImage?) -> ()) {
+    init(audioContext: FDAudioContext, imageSize: CGSize, sampleRange: CountableRange<Int>? = nil, format: FDWaveformRenderFormat = FDWaveformRenderFormat(), completionHandler: @escaping (_ image: UIImage?, _ samples: [CGFloat], _ sampleMax: CGFloat) -> ()) {
         self.audioContext = audioContext
         self.imageSize = imageSize
         self.sampleRange = sampleRange ?? 0..<audioContext.totalSamples
@@ -85,7 +88,7 @@ final public class FDWaveformRenderOperation: Operation {
         
         self.completionBlock = { [weak self] in
             guard let `self` = self else { return }
-            self.completionHandler(self.renderedImage)
+            self.completionHandler(self.renderedImage, self.finalSamples, self.finalSampleMax)
             self.renderedImage = nil
         }
     }
@@ -104,7 +107,7 @@ final public class FDWaveformRenderOperation: Operation {
         }
     }
     
-    func finish(with image: UIImage?) {
+    func finish(with image: UIImage?, samples: [CGFloat], sampleMax: CGFloat) {
         guard !isFinished && !isCancelled else { return }
         
         renderedImage = image
@@ -123,7 +126,7 @@ final public class FDWaveformRenderOperation: Operation {
             !sampleRange.isEmpty,
             imageSize.width > 0, imageSize.height > 0
             else {
-                finish(with: nil)
+            finish(with: nil, samples: [], sampleMax: 0)
                 return
         }
         
@@ -131,14 +134,17 @@ final public class FDWaveformRenderOperation: Operation {
         
         let image: UIImage? = {
             guard
-                let (samples, sampleMax) = sliceAsset(withRange: sampleRange, andDownsampleTo: targetSamples),
-                let image = plotWaveformGraph(samples, maximumValue: sampleMax, zeroValue: format.type.floorValue)
+                let (samples, sampleMax) = sliceAsset(withRange: sampleRange, andDownsampleTo: targetSamples) else { return nil }
+            finalSamples = samples;
+            finalSampleMax =  sampleMax;
+            
+                guard let image = plotWaveformGraph(samples, maximumValue: sampleMax, zeroValue: format.type.floorValue)
                 else { return nil }
             
             return image
         }()
         
-        finish(with: image)
+        finish(with: image, samples: finalSamples, sampleMax: finalSampleMax)
     }
     
     /// Read the asset and create a lower resolution set of samples

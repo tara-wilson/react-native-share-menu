@@ -4,8 +4,9 @@ import AVFoundation
 //import CoreML
 
 @objc(ShareMenu)
-class ShareMenu: RCTEventEmitter {
+class ShareMenu: RCTEventEmitter, FDWaveformViewDelegate {
 
+    var waveformView: FDWaveformView = FDWaveformView(frame: CGRect.init(x: 0, y: 0, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height))
     private(set) static var _shared: ShareMenu?
     @objc public static var shared: ShareMenu
     {
@@ -115,6 +116,8 @@ class ShareMenu: RCTEventEmitter {
     }
     
     func saveFileMetadata(url: URL) {
+        waveformView.delegate = self
+        waveformView.audioURL = url
         guard let bundleId = Bundle.main.bundleIdentifier else { return }
         guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
             print("Error: \(NO_APP_GROUP_ERROR)")
@@ -164,15 +167,92 @@ class ShareMenu: RCTEventEmitter {
                 let jsonData = try JSONSerialization.data(withJSONObject: metadataDict, options: .prettyPrinted)
                 let jsonString = String(data: jsonData, encoding: String.Encoding.utf8)
                 userDefaults.setValue(jsonString, forKey: "last_url_share_metadata");
+                
+                
                 userDefaults.synchronize();
+             
+//                FDAudioContext.load(fromAudioURL: url) { audioContext in
+//                    DispatchQueue.main.async {
+//
+//
+//                        if audioContext == nil {
+//                            NSLog("FDWaveformView failed to load URL: \(url)")
+//                        }
+//
+//                        print("samples", audioContext?.totalSamples)
+//                    }
+//                }
+                
+            
             }
         } catch {
             print(error)
         }
-       
-
-
+      
+    }
+    
+    func waveformViewDidLoad(_ waveformView: FDWaveformView) {
+        waveformView.renderWaveform()
+    }
+    
+    func waveformViewDidRender(_ waveformView: FDWaveformView) {
+        guard let bundleId = Bundle.main.bundleIdentifier else { return }
+        guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
+            print("Error: \(NO_APP_GROUP_ERROR)")
+            return
+        }
         
+        print("got samples", waveformView.finalSamples.count)
+        userDefaults.setValue(waveformView.finalSamples, forKey: "last_url_share_samples");
+        userDefaults.setValue(waveformView.finalSampleMax, forKey: "last_url_share_sample_max");
+        userDefaults.synchronize();
+    }
+    
+    func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
+      do {
+        if FileManager.default.fileExists(atPath: destUrl.path) {
+          try FileManager.default.removeItem(at: destUrl)
+        }
+        try FileManager.default.copyItem(at: srcUrl, to: destUrl)
+      } catch (let error) {
+        print("Could not save file from \(srcUrl) to \(destUrl): \(error)")
+        return false
+      }
+      
+      return true
+    }
+
+    @objc(getSharedText:)
+    func getSharedText(callback: RCTResponseSenderBlock) {
+        guard var data: [String:Any] = sharedData else {
+            callback([])
+            return
+        }
+
+        if let bundleId = Bundle.main.bundleIdentifier, let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") {
+            data[EXTRA_DATA_KEY] = userDefaults.object(forKey: USER_DEFAULTS_EXTRA_DATA_KEY) as? [String:Any]
+        } else {
+            print("Error: \(NO_APP_GROUP_ERROR)")
+        }
+
+        callback([data as Any])
+        sharedData = nil
+    }
+    
+    func dispatchEvent(with data: [String:String], and extraData: [String:Any]?) {
+        guard hasListeners else { return }
+
+        var finalData = data as [String:Any]
+        if (extraData != nil) {
+            finalData[EXTRA_DATA_KEY] = extraData
+        }
+        
+        sendEvent(withName: NEW_SHARE_EVENT, body: finalData)
+    }
+}
+
+
+
 //        if #available(iOS 13.0, *) {
 //
 //
@@ -229,49 +309,3 @@ class ShareMenu: RCTEventEmitter {
 //            // Fallback on earlier versions
 //        }
 //
-      
-      
-    }
-    
-    func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
-      do {
-        if FileManager.default.fileExists(atPath: destUrl.path) {
-          try FileManager.default.removeItem(at: destUrl)
-        }
-        try FileManager.default.copyItem(at: srcUrl, to: destUrl)
-      } catch (let error) {
-        print("Could not save file from \(srcUrl) to \(destUrl): \(error)")
-        return false
-      }
-      
-      return true
-    }
-
-    @objc(getSharedText:)
-    func getSharedText(callback: RCTResponseSenderBlock) {
-        guard var data: [String:Any] = sharedData else {
-            callback([])
-            return
-        }
-
-        if let bundleId = Bundle.main.bundleIdentifier, let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") {
-            data[EXTRA_DATA_KEY] = userDefaults.object(forKey: USER_DEFAULTS_EXTRA_DATA_KEY) as? [String:Any]
-        } else {
-            print("Error: \(NO_APP_GROUP_ERROR)")
-        }
-
-        callback([data as Any])
-        sharedData = nil
-    }
-    
-    func dispatchEvent(with data: [String:String], and extraData: [String:Any]?) {
-        guard hasListeners else { return }
-
-        var finalData = data as [String:Any]
-        if (extraData != nil) {
-            finalData[EXTRA_DATA_KEY] = extraData
-        }
-        
-        sendEvent(withName: NEW_SHARE_EVENT, body: finalData)
-    }
-}

@@ -16,6 +16,9 @@ open class FDWaveformView: UIView {
     /// A delegate to accept progress reporting
     /*@IBInspectable*/ open weak var delegate: FDWaveformViewDelegate?
 
+    var finalSamples: [CGFloat] = []
+    var finalSampleMax: CGFloat = 0
+    
     /// The audio file to render
     /*@IBInspectable*/ open var audioURL: URL? {
         didSet {
@@ -419,10 +422,11 @@ open class FDWaveformView: UIView {
         let imageSize = CGSize(width: widthInPixels, height: heightInPixels)
         let renderFormat = FDWaveformRenderFormat(type: waveformRenderType, wavesColor: .black, scale: desiredImageScale)
 
-        let waveformRenderOperation = FDWaveformRenderOperation(audioContext: audioContext, imageSize: imageSize, sampleRange: renderSamples, format: renderFormat) { [weak self] image in
+        let waveformRenderOperation = FDWaveformRenderOperation(audioContext: audioContext, imageSize: imageSize, sampleRange: renderSamples, format: renderFormat) { [weak self] (image, samples, sampleMax) in
             DispatchQueue.main.async {
                 guard let strongSelf = self else { return }
-
+                strongSelf.finalSamples = samples
+                strongSelf.finalSampleMax = sampleMax
                 strongSelf.renderForCurrentAssetFailed = (image == nil)
                 strongSelf.waveformImage = image
                 strongSelf.renderingInProgress = false
