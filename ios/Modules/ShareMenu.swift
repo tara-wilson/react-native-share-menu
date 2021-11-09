@@ -93,10 +93,6 @@ class ShareMenu: RCTEventEmitter {
             print("Error: \(NO_APP_GROUP_ERROR)")
             return
         }
-        
-        if (scheme == "file") {
-            saveFileMetadata(url: url)
-        }
 
 
         let extraData = userDefaults.object(forKey: USER_DEFAULTS_EXTRA_DATA_KEY) as? [String:Any]
@@ -113,69 +109,7 @@ class ShareMenu: RCTEventEmitter {
         let documentsDirectory = paths[0]
         return documentsDirectory
     }
-    
-    func saveFileMetadata(url: URL) {
-        guard let bundleId = Bundle.main.bundleIdentifier else { return }
-        guard let userDefaults = UserDefaults(suiteName: "group.\(bundleId)") else {
-            print("Error: \(NO_APP_GROUP_ERROR)")
-            return
-        }
-        
-        guard let groupFileManagerContainer = FileManager.default
-                .containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)")
-        else {
-          return
-        }
-        
-        do {
-            let mimeType = url.extractMimeType()
-            if (mimeType.contains("audio")) {
-                let asset = AVAsset.init(url: url)
-                let duration = asset.duration.seconds
-                userDefaults.setValue(duration, forKey: "last_url_share_duration");
-                
-                let metadata = asset.metadata
-                var metadataDict: [String: Any] = [:]
-                metadata.forEach({ item in
-                    if let id = item.identifier {
-                        if let strVal = item.stringValue {
-                            metadataDict[id.rawValue] = strVal
-                        }
-                        else if let nVal = item.numberValue {
-                            metadataDict[id.rawValue] = nVal
-                        } else if id == AVMetadataIdentifier("id3/APIC"), let dataval = item.dataValue {
-                            var image: UIImage = UIImage(data: dataval)!
-                            if let data = image.pngData() {
-                                let filename = groupFileManagerContainer
-                                  .appendingPathComponent("temp.png")
-                                    try? data.write(to: filename)
-                           
-                                userDefaults.setValue(filename.absoluteURL.absoluteString, forKey: "last_url_share_image");
-                            }
-                          
-                        } else {
-                            print("tara here could not get", item.identifier)
 
-                        }
-                    }
-                })
-             
-              
-                let jsonData = try JSONSerialization.data(withJSONObject: metadataDict, options: .prettyPrinted)
-                let jsonString = String(data: jsonData, encoding: String.Encoding.utf8)
-                userDefaults.setValue(jsonString, forKey: "last_url_share_metadata");
-                
-                
-                userDefaults.synchronize();
-             
-            
-            }
-        } catch {
-            print(error)
-        }
-      
-    }
-    
 
     func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
       do {
